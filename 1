@@ -1,0 +1,109 @@
+#define Addr 0x23
+
+int luminance = 0;
+int buzzer = D4;
+int led = D7;
+
+void setup()
+
+{
+    
+pinMode(buzzer, OUTPUT);
+pinMode(led, OUTPUT);
+
+// Set variable
+
+Particle.variable("i2cdevice","BH1715");
+
+Particle.variable("luminance",luminance);
+
+// Initialise I2C communication as MASTER
+
+Wire.begin();
+
+// Initialise serial communication, set baud rate = 9600
+
+Serial.begin(9600);
+
+// Start I2C Transmission
+
+Wire.beginTransmission(Addr);
+
+// Send power on command
+
+Wire.write(0x01);
+
+// Stop I2C Transmission
+
+Wire.endTransmission();
+
+// Start I2C Transmission
+
+Wire.beginTransmission(Addr);
+
+// Send continuous measurement command
+
+Wire.write(0x10);
+
+// Stop I2C Transmission
+
+Wire.endTransmission();
+
+delay(300);
+
+}
+
+void loop()
+
+{
+
+unsigned int data[2];
+
+// Request 2 byte of data
+
+Wire.requestFrom(Addr, 2);
+
+// Read 2 bytes of data
+
+// ALS msb, ALS lsb
+
+if(Wire.available()==2)
+
+{
+
+data[0] = Wire.read();
+
+data[1] = Wire.read();
+
+}
+
+delay(300);
+
+// Convert the data
+
+luminance = ((data[0] & 0xFF) * 256 + (data[1] & 0xFF)) / 1.20;
+
+// digitalWrite(led, HIGH);
+// digitalWrite(buzzer, HIGH);
+// delay(500);
+// digitalWrite(buzzer, LOW);
+// digitalWrite(led, LOW);
+    
+if (luminance >= 50)
+{
+    digitalWrite(led, HIGH);
+    digitalWrite(buzzer, HIGH);
+    delay(500);
+    digitalWrite(buzzer, LOW);
+    digitalWrite(led, LOW);
+}
+else
+{
+    digitalWrite(led, LOW);
+}
+
+// Output data to dashboard
+
+Particle.publish("Ambient Light Luminance :", String(luminance));
+
+}
