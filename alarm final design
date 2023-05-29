@@ -1,0 +1,84 @@
+#define Addr 0x23
+
+int luminance = 0;
+int buzzer = D4;
+int led = D7;
+int button = D2;
+bool isBuzzing = true;
+
+void setup()
+{
+    pinMode(buzzer, OUTPUT);
+    pinMode(led, OUTPUT);
+    pinMode(button, INPUT_PULLUP);
+
+    Particle.variable("i2cdevice", "BH1715");
+    Particle.variable("luminance", luminance);
+
+    Wire.begin();
+    Serial.begin(9600);
+
+    Wire.beginTransmission(Addr);
+    Wire.write(0x01);
+    Wire.endTransmission();
+
+    Wire.beginTransmission(Addr);
+    Wire.write(0x10);
+    Wire.endTransmission();
+
+    delay(300);
+}
+
+void loop()
+{
+    unsigned int data[2];
+
+    Wire.requestFrom(Addr, 2);
+
+    if (Wire.available() == 2)
+    {
+        data[0] = Wire.read();
+        data[1] = Wire.read();
+    }
+
+    delay(300);
+
+    luminance = ((data[0] & 0xFF) * 256 + (data[1] & 0xFF)) / 1.20;
+
+    int buttonState = digitalRead(button);
+
+    if (buttonState == HIGH)
+    {
+        isBuzzing = !isBuzzing;
+        delay(500); 
+        
+        digitalWrite(buzzer, LOW);
+        digitalWrite(led, LOW);
+        
+        int currentHour = Time.hour();
+        if (currentHour < 24)
+        {
+            int remainingDelay = (24 - currentHour) * 60 * 60 * 1000; // calculates remaining delay until midnight
+            delay(10000);
+        }
+    }
+    
+    if (buttonState ==LOW)
+    {
+        isBuzzing = true;
+    }
+
+    if (isBuzzing && luminance >= 50)
+    {
+        digitalWrite(buzzer, HIGH);
+        digitalWrite(led, HIGH);
+    }
+    else
+    {
+        digitalWrite(buzzer, LOW);
+        digitalWrite(led, LOW);
+    }
+
+    Particle.publish("Ambient Light Luminance:", String(luminance));
+
+}
